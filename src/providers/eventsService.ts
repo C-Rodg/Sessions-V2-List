@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import { ToastController } from 'ionic-angular';
 import { Http } from '@angular/http';
 import { Observable } from 'rxjs/Observable';
 import 'rxjs/add/operator/map';
@@ -9,9 +10,27 @@ import * as moment from 'moment';
 @Injectable()
 export class EventsService {
 
-    constructor(private http: Http) {
+    constructor(private http: Http, private toastCtrl: ToastController) {
 
     }
+
+    // Check for updates to an event
+    checkForUpdates(event) {
+        let ev = this.cleanEvent(event);
+        let context = {
+            event: ev,
+            EventGuid: ev.EventGuid,
+            authCode: ev.AuthCode,
+            authGuid: ev.AuthGuid,
+            LoginRestUrl: ev.LoginUrl,
+            SessionRestUrl: ev.SessionUrl
+        };
+    }  
+
+    // Login to Validar Services
+    login(context) {
+        
+    }  
 
     // Delete an event
     deleteEvent(eg) {
@@ -36,6 +55,14 @@ export class EventsService {
         });
     }
 
+    // Clean Event
+    cleanEvent(event) {
+        delete event.TotalCount;
+        delete event.PendingCount;
+        delete event.DisplayDate;
+        return event;
+    }
+
     // Return local events
     allEvents() {
         return this.http.get('http://localhost/events').map(d => d.json()).map(d => d.Events);
@@ -49,5 +76,16 @@ export class EventsService {
     // Get Client info 
     getClientInfo() {
         return this.http.get('http://localhost/clientinfo').map(d => d.json());
+    }
+
+    // Helper - Show notification
+    showToast(msg, isError) {
+        let toast = this.toastCtrl.create({
+        message: msg,
+        duration: 3000,
+        position: 'top',
+        cssClass: isError ? 'error-notify' : ''
+        });
+        toast.present();
     }
 }

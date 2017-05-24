@@ -1,5 +1,5 @@
 import { Component, NgZone } from '@angular/core';
-import { AlertController, ToastController } from 'ionic-angular';
+import { AlertController } from 'ionic-angular';
 import * as moment from 'moment';
 
 import { ScanCameraService } from '../../providers/scanCameraService';
@@ -22,7 +22,6 @@ export class HomePage {
     private eventsService: EventsService,
     private zone: NgZone,
     private alertCtrl: AlertController,
-    private toastCtrl: ToastController
   ) {
   }
 
@@ -31,10 +30,7 @@ export class HomePage {
     this.eventsService.getEvents().subscribe((data) => {      
       this.events = this.sortByStartDate(data);
       console.log(this.events);
-    }, (err) => {
-      console.log("ERROR");
-      console.log(err);
-    });
+    }, (err) => {});
   }
 
   // Set OnDataRead
@@ -57,7 +53,15 @@ export class HomePage {
 
   // Update Event
   updateEvent(event) {
-    alert("Updating " + event.EventGuid);
+    if (window.navigator.onLine) {
+      this.eventsService.checkForUpdates(event).subscribe((data) => {
+
+      }, (err) => {
+
+      });
+    } else {
+      this.eventsService.showToast('Please check your internet connection...', true);
+    }    
     return false;
   }
 
@@ -94,12 +98,12 @@ export class HomePage {
     if (pass === '9151') {
       this.eventsService.deleteEvent(eg).subscribe((d) => {        
         this.events = this.events.filter((event) => event.EventGuid !== eg);
-        this.showToast("Event has been removed.", false);
+        this.eventsService.showToast("Event has been removed.", false);
       }, (err) => {
-        this.showToast('There was an issue deleting that event..', true);
+        this.eventsService.showToast('There was an issue deleting that event..', true);
       });      
     } else {
-      this.showToast('Incorrect password...', true);
+      this.eventsService.showToast('Incorrect password...', true);
     }
   }
 
@@ -133,16 +137,5 @@ export class HomePage {
     return arr.sort((a, b) => {
       return moment(b.StartDate, 'YYYY-MM-DDTHH:mm:ss.SSSZ').diff(moment(a.StartDate, 'YYYY-MM-DDTHH:mm:ss.SSSZ'));
     });
-  }
-
-  // Helper - Show notification
-  showToast(msg, isError) {
-    let toast = this.toastCtrl.create({
-      message: msg,
-      duration: 3000,
-      position: 'top',
-      cssClass: isError ? 'error-notify' : ''
-    });
-    toast.present();
-  }
+  }  
 }
