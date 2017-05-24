@@ -1,0 +1,62 @@
+page-home {
+    .content-md {
+        background-color: #e5e5e5;
+    }
+    
+    ion-navbar {
+        .toolbar-title {
+            text-align: center;
+            margin-left: 40px;
+        }
+    }
+
+    // Navbar button spacing
+    .navbar-btns {
+        button {
+            margin-right: 12px;
+        }
+    }
+
+    .event-card {
+        border-left: 3px solid color($colors, p-primary);
+        .card-content {
+            padding: 13px 11px 0 13px;
+        }
+
+        .title {
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .city {
+            line-height: 21px;
+            font-size: 12px;
+            color: #333;
+        }
+
+        .stats {
+            ion-col {
+                padding: 3px 0 0 0;
+            }
+
+            .pending,
+            .total {
+                color: #333;
+            }
+
+            .pending.danger {
+                color: color($colors, p-danger);
+            }
+        }
+
+        .event-actions {
+            ion-col {
+                padding: 0;
+            }
+
+            button {
+                padding-top: 3px;
+            }
+        }
+    }
+}

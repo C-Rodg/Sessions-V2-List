@@ -1,0 +1,63 @@
+<ion-header>
+  <ion-navbar color="p-primary-dark" padding-top>
+    <ion-title>
+      AVE-Session
+    </ion-title>
+    <ion-buttons end class="navbar-btns">
+      <button ion-button icon-only (click)="toggleCamera()" [style.visibility]="showCamera ? 'visible' : 'hidden'">
+        <ion-icon name="reverse-camera"></ion-icon>
+      </button>
+    </ion-buttons>
+  </ion-navbar>
+</ion-header>
+
+<ion-content>
+  <div class="events-container" [hidden]="showCamera">
+
+    <div *ngFor="let event of events">
+      <ion-card class="event-card">
+        <ion-card-content>
+          <div class="title">{{event.Name}}</div>
+          <div class="date">{{event.DisplayDate}}</div>        
+          <div class="city">{{event.City}}</div>        
+          <ion-row class="stats">
+            <ion-col col-6>
+              <div class="total">Total Scans: {{event.TotalCount}}</div> 
+            </ion-col>
+            <ion-col col-6>
+              <div class="pending" [ngClass]="{'danger': event.PendingCount > 0}" >Pending Uploads: {{event.PendingCount}}</div>
+            </ion-col>
+          </ion-row>
+        </ion-card-content>
+        <ion-row class="event-actions">
+          <ion-col col-4>
+            <button ion-button icon-left clear small color="p-primary-dark" (tap)="deleteEvent(event)">
+              <ion-icon name="ios-trash"></ion-icon>
+              <div>Delete</div>
+            </button>
+          </ion-col>
+          <ion-col col-4>
+            <button ion-button icon-left clear small color="p-primary-dark" (tap)="updateEvent(event)">
+              <ion-icon name="refresh"></ion-icon>
+              <div>Update</div>
+            </button>
+          </ion-col>
+          <ion-col col-4>
+            <button ion-button icon-left clear small color="p-primary-dark" (tap)="launchEvent(event)">
+              <ion-icon name="cloud-download"></ion-icon>
+              <div>Launch</div>
+            </button>
+          </ion-col>
+        </ion-row>
+      </ion-card>
+    </div>
+
+  </div>
+
+</ion-content>
+
+<ion-footer>
+  <ion-toolbar>
+    <button color="p-primary" ion-button block large (tap)="scanEventCode()">{{largeBtnText}}</button>
+  </ion-toolbar>
+</ion-footer>
