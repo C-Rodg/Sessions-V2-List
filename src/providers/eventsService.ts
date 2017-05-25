@@ -14,6 +14,9 @@ export class EventsService {
 
     }
 
+    // Login, Get BundleHash, DownloadContent, resolve
+    // ^^^^^>> InitateChallenge, ComputeHash, ValidateChallenge 
+
     // Check for updates to an event
     checkForUpdates(event) {
         let ev = this.cleanEvent(event);
@@ -29,8 +32,27 @@ export class EventsService {
 
     // Login to Validar Services
     login(context) {
-        
+        let loginArgs = {
+            loginRestUrl: context.LoginRestUrl
+        };
+        loginArgs['authCode'] = context.authCode ? context.authCode : context.configurationKey.configuration.authCode;
+        loginArgs['authGuid'] = context.authCode ? context.authGuid : context.configurationKey.configuration.authGuid;
     }  
+
+    // Initate Challenge (login #1)
+    initiateChallenge(loginArgs) {
+
+    }
+
+    // Compute Hash (login #2)
+    computeHash() {
+
+    }
+
+    // Validate Challenge (login #3)
+    validateChallenge() {
+
+    }
 
     // Delete an event
     deleteEvent(eg) {
