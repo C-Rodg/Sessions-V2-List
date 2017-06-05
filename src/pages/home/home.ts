@@ -53,10 +53,23 @@ export class HomePage {
   }
 
   // Download Event
-  // TODO:::
-  // HANDLE QR CODE SCAN HERE
-  handleEventScan(data) {
-    
+  handleEventScan(d) {    
+    if (window.navigator.onLine) {
+      this.turnOffCamera();
+      let loader = this.loadingCtrl.create({
+        content: 'Downloading new event...'
+      });
+      loader.present();
+      this.eventsService.loadEventFromKey(d[0].Data).subscribe((data) => {
+        loader.dismiss();
+      }, (err) => {
+        loader.dismiss();
+        this.eventsService.showToast("There was an issue downloading this event...", true);
+      })
+    } else {
+      this.eventsService.showToast('Please check your internet connection...', true);
+    }
+    return false;
   }
 
   // Update Event
@@ -133,15 +146,25 @@ export class HomePage {
   // Toggle show/hide camera
   scanEventCode() {
     if (!this.showCamera) {
-      this.scanCameraService.calculatePosition();
-      this.scanCameraService.turnOn();
-      this.largeBtnText = "Shut Off Camera";
-      this.showCamera = true;      
+      this.turnOnCamera();
     } else {
-      this.scanCameraService.turnOff();
-      this.largeBtnText = "Add New Event";
-      this.showCamera = false;
+      this.turnOffCamera();
     }
+  }
+
+  // Turn off Camera
+  turnOffCamera() {
+    this.scanCameraService.turnOff();
+    this.largeBtnText = "Add New Event";
+    this.showCamera = false;
+  }
+
+  // Turn on Camera
+  turnOnCamera() {
+    this.scanCameraService.calculatePosition();
+    this.scanCameraService.turnOn();
+    this.largeBtnText = "Shut Off Camera";
+    this.showCamera = true;
   }
 
   // Toggle camera direction

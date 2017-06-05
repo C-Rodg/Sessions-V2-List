@@ -7,6 +7,7 @@ import 'rxjs/add/observable/forkJoin'
 import 'rxjs/add/operator/mergeMap';
 import 'rxjs/add/observable/of';
 import * as moment from 'moment';
+import { CONFIGURATION_KEY_PASSCODE, EVENT_SESSION_TRACKING_CONFIGURATION_KEY_TYPE } from '../secrets/secrets';
 
 @Injectable()
 export class EventsService {
@@ -15,9 +16,104 @@ export class EventsService {
 
     }
 
+    // TODO: START HERE___!!!!
+    // Scanned QR code, load event
+    // 1.) Parse Configuration Key, 2.) Load Existing Event, 3.) Get Discovery REST URL, 4.) Get Login REST URL, 5.) Get Session REST URL, 6.) Get Access Control REST URL
+    // 7.) Login*, 8.) Get Event Info, 9.) Confirm Adding Event??, 10.) Create or Update Event, 11.) Save Session Token, 12.) Download Content, 13.) Load Session List
+    // Login>^^^^^>> 7A. InitateChallenge, 7B. ComputeHash, 7C. ValidateChallenge
+    loadEventFromKey(key) {
+        // TODO: CHECK FOR ERRORS IN FLATMAPS
+    }
+
+    // Parse Configuration Key (load #1)
+    parseConfigurationKey(k) {
+        let req = {
+            passcode: CONFIGURATION_KEY_PASSCODE,
+            data: k
+        };
+        return this.http.post(`http://localhost/configurationkey/parse`, JSON.stringify(req)).map(res => res.json()).map((r) => {
+            if (r.entity.toUpperCase() != EVENT_SESSION_TRACKING_CONFIGURATION_KEY_TYPE) {
+                return {
+                    error: true,
+                    msg : 'Incorrect type of configuration key...'
+                };
+            } else {
+                const expire = Date.parse(r.expirationDateTimeUtc);
+                if (expire < Date.now()) {
+                    return {
+                        error: true,
+                        msg: 'Configuration key has expired...'
+                    };
+                } else {
+                    let context = {
+                        configurationKey: r
+                    };
+                    context.configurationKey.revision = parseInt(context.configurationKey.revision);
+                    return context;
+                }
+            }
+        });
+    }
+
+    // Attempt to load event from local database (load #2)
+    loadExistingEvent(context) {
+        return this.http.get(`http://localhost/events/${context.configurationKey.configuration.eventGuid}`).map(res => res.json()).map((r) => {
+            if (r.Fault) {
+                if (r.Fault.Type == 'NotFoundFault') {
+                    context.event = null;
+                    return context;
+                } else {
+                    return {
+                        error: true,
+                        msg: r.Fault.Type
+                    };
+                }
+            } else {
+                // Lead source was previously loaded
+                if (context.configurationKey.revision <= r.Event.Revision) {
+                    return {
+                        error: true,
+                        msg: "Invalid revision of configuration key..."
+                    };
+                } else {
+                    context.event = r.Event;
+                    return context;
+                }
+            }
+        });
+    }
+
+    // Get the discovery url (load #3)
+    getDiscoveryRestUrl(context) {
+        return this.http.get(`${context.configurationKey.configuration.discoverUrl}?urlTypes=rest&versionMajor=1&versionMinor=0`).map(res => res.json()).map((r) => {
+            context.DiscoveryRestUrl = null;
+            if (r.ApplicationResults.length != 1) {}
+            else {
+                if (r.ApplicationResults[0].ApplicationUrls.length != 1) {}
+                else {
+                    context.DiscoveryRestUrl = r.ApplicationResults[0].ApplicationUrls[0].Url;
+                }
+            }
+
+            if (context.DiscoveryRestUrl != null) {
+                return context;
+            } else {
+                return {
+                    error: true,
+                    msg: 'Invalid response from discovery URL service...'
+                };
+            }
+        });
+    }
+
+    // Get login URL (load #4)
+    getLoginRestUrl(context) {
+        // TODO: COMPLETE SERVICE...
+    }
+
     // Check for updates to an event
-    // 1. Login, 2. Get BundleHash, 3. DownloadContent, resolve
-    // ^^^^^>> 1A. InitateChallenge, 1B. ComputeHash, 1C. ValidateChallenge
+    // 1.) Login*, 2.) Get BundleHash, 3.) DownloadContent, resolve
+    // Login>^^^^^>> 1A.) InitateChallenge, 1B.) ComputeHash, 1C.) ValidateChallenge
     checkForUpdates(event) {
         let ev = this.cleanEvent(event);
         let context = {
