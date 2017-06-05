@@ -1,5 +1,5 @@
 import { Component, NgZone } from '@angular/core';
-import { AlertController } from 'ionic-angular';
+import { AlertController, LoadingController } from 'ionic-angular';
 import * as moment from 'moment';
 
 import { ScanCameraService } from '../../providers/scanCameraService';
@@ -22,20 +22,26 @@ export class HomePage {
     private eventsService: EventsService,
     private zone: NgZone,
     private alertCtrl: AlertController,
+    private loadingCtrl: LoadingController,
   ) {
   }
 
   // Get Events
   ionViewWillEnter() {
-    this.eventsService.getEvents().subscribe((data) => {      
-      this.events = this.sortByStartDate(data);
-      console.log(this.events);
-    }, (err) => {});
+    this.refreshEventsList();
   }
 
   // Set OnDataRead
   ionViewDidEnter() {
     (<any>window).OnDataRead = this.onZoneDataRead.bind(this);
+  }
+
+  // Refresh Events List
+  refreshEventsList() {
+    this.eventsService.getEvents().subscribe((data) => {      
+      this.events = this.sortByStartDate(data);
+      console.log(this.events);
+    }, (err) => {});
   }
 
 
@@ -47,6 +53,8 @@ export class HomePage {
   }
 
   // Download Event
+  // TODO:::
+  // HANDLE QR CODE SCAN HERE
   handleEventScan(data) {
     
   }
@@ -54,10 +62,19 @@ export class HomePage {
   // Update Event
   updateEvent(event) {
     if (window.navigator.onLine) {
+      let loader = this.loadingCtrl.create({
+        content: 'Checking for updates...'
+      });
+      loader.present();
       this.eventsService.checkForUpdates(event).subscribe((data) => {
-
+        loader.dismiss();
+        this.refreshEventsList();
+        if (data) {          
+          this.eventsService.showToast('Content updated!', false);          
+        }
       }, (err) => {
-
+        loader.dismiss();
+        this.eventsService.showToast('There was an issue downloading updates...', true);
       });
     } else {
       this.eventsService.showToast('Please check your internet connection...', true);

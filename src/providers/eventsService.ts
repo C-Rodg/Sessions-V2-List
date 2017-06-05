@@ -28,7 +28,14 @@ export class EventsService {
             LoginRestUrl: ev.LoginUrl,
             SessionRestUrl: ev.SessionUrl
         };
-        return this.login(context).flatMap(this.getBundleHash).flatMap(this.downloadContent);
+        return this.login(context).flatMap((a)=>this.getBundleHash(a)).flatMap((b) => {
+            if (b.sameContent) {
+                this.showToast('Content is already up-to-date.', false);
+                return Observable.of(null);
+            }
+            this.showToast("Downloading update...", false);
+            return this.downloadContent(b);
+        });
     }  
 
     // Login to Validar Services
@@ -39,7 +46,7 @@ export class EventsService {
         loginArgs['authCode'] = context.authCode ? context.authCode : context.configurationKey.configuration.authCode;
         loginArgs['authGuid'] = context.authCode ? context.authGuid : context.configurationKey.configuration.authGuid;
 
-        return this.initiateChallenge(loginArgs).flatMap(this.computeHash).flatMap(this.validateChallenge).flatMap((loginResult) => {
+        return this.initiateChallenge(loginArgs).flatMap((a)=>this.computeHash(a)).flatMap((b)=>this.validateChallenge(b)).flatMap((loginResult) => {
             context.SessionToken = loginResult.SessionToken;
             return Observable.of(context);
         });
@@ -47,6 +54,7 @@ export class EventsService {
 
     // Initate Challenge (login #1A)
     initiateChallenge(loginArgs) {
+        this.showToast('Logging in...', false);        
         return this.http.post(`${loginArgs.loginRestUrl}/InitiateChallenge/${loginArgs.authGuid}`, {}).map(res => res.json()).map((r) => {
             loginArgs.challenge = r;
             return loginArgs;
@@ -80,13 +88,15 @@ export class EventsService {
     // Get Bundle Hash (login #2)
     getBundleHash(context) {
         let headers = new Headers();
+        headers.append('Content-Type', 'application/json');
         headers.append('Authorization', `ValidarSession token="${context.SessionToken}"`);
-        return this.http.get(`${context.SessionRestUrl}/GetBundleHash/${context.event.EventGuid}`, headers).map(res => res.json()).map((r) => {
+        return this.http.get(`${context.SessionRestUrl}/GetBundleHash/${context.event.EventGuid}`, {headers}).map(res => res.json()).map((r) => {
             if (r.Hash != context.event.BundleHash) {
                 return context;
             } else {
-                // TODO: ?? SHOW NOTIFICATION FOR UP-TO-DATE content... or handle error?
-                return Observable.throw('The content is up to date');
+                return {
+                    sameContent: true
+                };
             }
         });
     }
