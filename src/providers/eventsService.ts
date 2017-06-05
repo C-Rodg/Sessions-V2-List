@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
 import { ToastController } from 'ionic-angular';
-import { Http } from '@angular/http';
+import { Http, Headers } from '@angular/http';
 import { Observable } from 'rxjs/Observable';
 import 'rxjs/add/operator/map';
 import 'rxjs/add/observable/forkJoin'
 import 'rxjs/add/operator/mergeMap';
+import 'rxjs/add/observable/of';
 import * as moment from 'moment';
 
 @Injectable()
@@ -14,10 +15,9 @@ export class EventsService {
 
     }
 
-    // Login, Get BundleHash, DownloadContent, resolve
-    // ^^^^^>> InitateChallenge, ComputeHash, ValidateChallenge 
-
     // Check for updates to an event
+    // 1. Login, 2. Get BundleHash, 3. DownloadContent, resolve
+    // ^^^^^>> 1A. InitateChallenge, 1B. ComputeHash, 1C. ValidateChallenge
     checkForUpdates(event) {
         let ev = this.cleanEvent(event);
         let context = {
@@ -28,6 +28,7 @@ export class EventsService {
             LoginRestUrl: ev.LoginUrl,
             SessionRestUrl: ev.SessionUrl
         };
+        return this.login(context).flatMap(this.getBundleHash).flatMap(this.downloadContent);
     }  
 
     // Login to Validar Services
@@ -37,21 +38,69 @@ export class EventsService {
         };
         loginArgs['authCode'] = context.authCode ? context.authCode : context.configurationKey.configuration.authCode;
         loginArgs['authGuid'] = context.authCode ? context.authGuid : context.configurationKey.configuration.authGuid;
+
+        return this.initiateChallenge(loginArgs).flatMap(this.computeHash).flatMap(this.validateChallenge).flatMap((loginResult) => {
+            context.SessionToken = loginResult.SessionToken;
+            return Observable.of(context);
+        });
     }  
 
-    // Initate Challenge (login #1)
+    // Initate Challenge (login #1A)
     initiateChallenge(loginArgs) {
-
+        return this.http.post(`${loginArgs.loginRestUrl}/InitiateChallenge/${loginArgs.authGuid}`, {}).map(res => res.json()).map((r) => {
+            loginArgs.challenge = r;
+            return loginArgs;
+        });
     }
 
-    // Compute Hash (login #2)
-    computeHash() {
-
+    // Compute Hash (login #1B)
+    computeHash(loginArgs) {
+        let req = {
+            authcode: loginArgs.authCode,
+            nonce: loginArgs.challenge.Nonce
+        };
+        return this.http.post(`http://localhost/digestauthentication/computehash`, JSON.stringify(req)).map(res => res.json()).map((r) => {
+            loginArgs.hash = r.Hash;
+            return loginArgs;
+        });
     }
 
-    // Validate Challenge (login #3)
-    validateChallenge() {
+    // Validate Challenge (login #1C)
+    validateChallenge(loginArgs) {
+        let urlHash = loginArgs.hash.replace(/\//g, '_');
+        urlHash = urlHash.replace(/\+/g, '-');
+        return this.http.post(`${loginArgs.loginRestUrl}/ValidateChallenge/${loginArgs.challenge.ChallengeGuid}/${encodeURIComponent(urlHash)}`, {}).map(res => res.json()).map((r) => {
+            let loginResult = {
+                SessionToken: r.SessionToken
+            };
+            return loginResult;
+        });
+    }
 
+    // Get Bundle Hash (login #2)
+    getBundleHash(context) {
+        let headers = new Headers();
+        headers.append('Authorization', `ValidarSession token="${context.SessionToken}"`);
+        return this.http.get(`${context.SessionRestUrl}/GetBundleHash/${context.event.EventGuid}`, headers).map(res => res.json()).map((r) => {
+            if (r.Hash != context.event.BundleHash) {
+                return context;
+            } else {
+                // TODO: ?? SHOW NOTIFICATION FOR UP-TO-DATE content... or handle error?
+                return Observable.throw('The content is up to date');
+            }
+        });
+    }
+
+    // Download new content (login #3)
+    downloadContent(context) {
+        let req = {
+            EventGuid: context.EventGuid ? context.EventGuid : context.configurationKey.configuration.eventGuid,
+            SessionUrl: context.SessionRestUrl,
+            SessionToken: context.SessionToken
+        };
+        return this.http.post(`http://localhost/bundle/getbundle`, JSON.stringify(req)).map(res => res.json()).map((r) => {
+            return context;
+        });
     }
 
     // Delete an event
