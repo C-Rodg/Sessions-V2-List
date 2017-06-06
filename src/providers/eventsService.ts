@@ -12,17 +12,70 @@ import { CONFIGURATION_KEY_PASSCODE, EVENT_SESSION_TRACKING_CONFIGURATION_KEY_TY
 @Injectable()
 export class EventsService {
 
-    constructor(private http: Http, private toastCtrl: ToastController) {
+    constructor(private http: Http, private toastCtrl: ToastController) { }
 
-    }
-
-    // TODO: START HERE___!!!!
     // Scanned QR code, load event
     // 1.) Parse Configuration Key, 2.) Load Existing Event, 3.) Get Discovery REST URL, 4.) Get Login REST URL, 5.) Get Session REST URL, 6.) Get Access Control REST URL
-    // 7.) Login*, 8.) Get Event Info, 9.) Confirm Adding Event??, 10.) Create or Update Event, 11.) Save Session Token, 12.) Download Content, 13.) Load Session List
-    // Login>^^^^^>> 7A. InitateChallenge, 7B. ComputeHash, 7C. ValidateChallenge
+    // 7.) Login*, 8.) Get Event Info, 9.) Create or Update Event, 10.) Save Session Token, 11.) Download Content, 12.) Load Session List*
+    // Login>^^^^^>> 7A.) InitateChallenge, 7B.) ComputeHash, 7C.) ValidateChallenge
+    // Load Session List>^^^^^>> 12A.) Fetch Session List, 12B.) Save Session List
     loadEventFromKey(key) {
-        // TODO: CHECK FOR ERRORS IN FLATMAPS
+        return this.parseConfigurationKey(key).flatMap((r1) => {
+            if (r1['error']) {
+                return Observable.throw(r1);
+            }
+            return this.loadExistingEvent(r1);
+        }).flatMap((r2) => {
+            if (r2['error']) {
+                return Observable.throw(r2);
+            }
+            return this.getDiscoveryRestUrl(r2);
+        }).flatMap((r3) => {
+            if (r3['error']) {
+                return Observable.throw(r3);
+            }
+            return this.getLoginRestUrl(r3);
+        }).flatMap((r4) => {
+            if (r4['error']) {
+                return Observable.throw(r4);
+            }
+            return this.getSessionRestUrl(r4);
+        }).flatMap((r5) => {
+            if (r5['error']) {
+                return Observable.throw(r5);
+            }
+            return this.getAccessControlRestUrl(r5);
+        }).flatMap((r6) => {
+            if (r6['error']) {
+                return Observable.throw(r6);
+            }
+            return this.login(r6);
+        }).flatMap((r7) => {
+            if (r7['error']) {
+                return Observable.throw(r7);
+            }
+            return this.getEventInfo(r7);
+        }).flatMap((r8) => {
+            if (r8['error']) {
+                return Observable.throw(r8);
+            }
+            return this.createOrUpdateEvent(r8);
+        }).flatMap((r9) => {
+            if (r9['error']) {
+                return Observable.throw(r9);
+            }
+            return this.saveSessionToken(r9);
+        }).flatMap((r10) => {
+            if (r10['error']) {
+                return Observable.throw(r10);
+            }
+            return this.downloadContent(r10);
+        }).flatMap((r11) => {
+            if (r11['error']) {
+                return Observable.throw(r11);
+            }
+            return this.loadSessionList(r11);
+        });
     }
 
     // Parse Configuration Key (load #1)
@@ -108,7 +161,179 @@ export class EventsService {
 
     // Get login URL (load #4)
     getLoginRestUrl(context) {
-        // TODO: COMPLETE SERVICE...
+        return this.http.get(`${context.DiscoveryRestUrl}/ApplicationUrls/ExternalLoginService?versionMajor=1&versionMinor=0&urlTypes=rest`).map(res => res.json()).map((r) => {
+            context.LoginRestUrl = null;
+            if (r.ApplicationResults.length != 1) {}
+            else {
+                if (r.ApplicationResults[0].ApplicationUrls.length != 1) {}
+                else {
+                    context.LoginRestUrl = r.ApplicationResults[0].ApplicationUrls[0].Url;
+                }
+            }
+
+            if (context.LoginRestUrl != null) {
+                return context;
+            } else {
+                return {
+                    error: true,
+                    msg: 'Invalid response from login URL service...'
+                };
+            }
+        });
+    }
+
+    // Get session URL (load #5)
+    getSessionRestUrl(context) {
+        return this.http.get(`${context.DiscoveryRestUrl}/ApplicationUrls/ExternalSessionService?versionMajor=2&versionMinor=0&urlTypes=rest`).map(res => res.json()).map((r) => {
+            context.SessionRestUrl = null;
+            if (r.ApplicationResults.length != 1) {}
+            else {
+                if (r.ApplicationResults[0].ApplicationUrls.length != 1) {}
+                else {
+                    context.SessionRestUrl = r.ApplicationResults[0].ApplicationUrls[0].Url;
+                }
+            }
+
+            if (context.SessionRestUrl != null) {
+                return context;
+            } else {
+                return {
+                    error: true,
+                    msg: "Invalid response from session URL service..."
+                };
+            }
+        });
+    }
+
+    // Get access control URL (load #6) 
+    getAccessControlRestUrl(context) {
+        return this.http.get(`${context.DiscoveryRestUrl}/ApplicationUrls/ExternalAccessControlService?versionMajor=1&versionMinor=0&urlTypes=rest`).map(res => res.json()).map((r) => {
+            context.AccessControlRestUrl = null;
+            if (r.ApplicationResults.length != 1) {}
+            else {
+                if (r.ApplicationResults[0].ApplicationUrls.length != 1) {}
+                else {
+                    context.AccessControlRestUrl = r.ApplicationResults[0].ApplicationUrls[0].Url;
+                }
+            }
+
+            if (context.AccessControlRestUrl != null) {
+                return context;
+            } else {
+                return {
+                    error: true,
+                    msg: 'Invalid response from access control URL service...'
+                };
+            }
+        });
+    }
+
+    // Get Event Info (load #8) 
+    getEventInfo(context) {
+        let headers = new Headers();
+        headers.append('Authorization', `ValidarSession token="${context.SessionToken}"`);
+        return this.http.get(`${context.SessionRestUrl}/GetEventInfo/${context.configurationKey.configuration.eventGuid}`, {headers}).map(res => res.json()).map((r) => {
+            context.EventInfo = r;
+            return context;
+        });
+    }
+
+    // Create or Update Event (load #9)
+    createOrUpdateEvent(context) {
+        if (!context.event) {
+            context.event = {};
+        }
+        context.event.Name = context.EventInfo.Name;
+        context.event.City = context.EventInfo.City;
+        context.event.State = context.EventInfo.StateProvince;
+        context.event.Venue = context.EventInfo.Venue;
+        context.event.StartDate = context.EventInfo.StartDate ? new Date(context.EventInfo.StartDate) : null;
+        context.event.EndDate = context.EventInfo.EndDate ? new Date(context.EventInfo.EndDate) : null;
+        context.event.Revision = context.configurationKey.revision;
+        context.event.DiscoveryUrl = context.DiscoveryRestUrl;
+        context.event.SessionUrl = context.SessionRestUrl;
+        context.event.AccessControlUrl = context.AccessControlRestUrl;
+        context.event.LoginUrl = context.LoginRestUrl;
+        context.event.AuthCode = context.configurationKey.configuration.authCode;
+        context.event.AuthGuid = context.configurationKey.configuration.authGuid;
+        context.event.BundleGuid = null;
+        context.event.BundleVersionGuid = null;
+        context.event.BundleHash = null;
+
+        return this.http.put(`http://localhost/events/${context.configurationKey.configuration.eventGuid}`, JSON.stringify(context.event)).map(res => res.json()).map((r) => {
+            if (!r || r.Fault) {
+                return {
+                    error: true,
+                    msg: r ? r.Fault.Type : 'Invalid response while creating event...'
+                };
+            }
+            return context;
+        });
+    }
+
+    // Save Session Token (load #10)
+    saveSessionToken(context) {
+        const sessionToken = {
+            SessionToken: context.SessionToken
+        };
+        return this.http.put(`http://localhost/events/${context.configurationKey.configuration.eventGuid}/sessiontoken`, JSON.stringify(sessionToken)).map(res => res.json()).map((r) => {
+            return context;
+        });
+    }
+
+    // Load Session List (load #12)
+    // >>>>> 12A.) fetchSessionList, 12B.) saveSessionList
+    loadSessionList(context) {
+        const args = {
+            SessionRestUrl: context.SessionRestUrl,
+            EventGuid: context.configurationKey.configuration.eventGuid,
+            SessionToken: context.SessionToken
+        };
+
+        return this.fetchSessionList(args).flatMap((d) => {
+            if (d.error) {
+                return Observable.throw(d);
+            } else {
+                return this.saveSessionlist(d);
+            }
+        })
+    }
+
+    // Fetch Session List (load #12A)
+    fetchSessionList(args) {
+        let headers = new Headers();
+        headers.append('Authorization', `ValidarSession token="${args.SessionToken}"`);
+        return this.http.get(`${args.SessionRestUrl}/ListAttendanceTrackingScheduleItemSessions/${args.EventGuid}`, {headers}).map(res => res.json()).map((r) => {
+            if (r.Fault) {
+                return {
+                    error: true,
+                    msg: r.Fault.Type
+                };
+            } else {
+                args.ScheduleItemSessions = r.ScheduleItemSessions;
+                return args;
+            }
+        });
+    }
+
+    // Save Session List (load #12B)
+    saveSessionlist(args) {
+        args.ScheduleItemSessions.forEach((sched) => {
+            sched.StartDateTime = sched.StartDateTime ? new Date(sched.StartDateTime + "Z") : null;
+            sched.EndDateTime = sched.EndDateTime ? new Date(sched.EndDateTime + "Z") : null;
+            sched.SessionGuid = sched.ScheduleItemGuid;
+            sched.SessionKey = sched.ScheduleItemKey;
+        });
+
+        return this.http.put(`http://localhost/events/${args.EventGuid}/sessions`, JSON.stringify(args.ScheduleItemSessions)).map(res => res.json()).map((r) => {
+            if (r.Fault) {
+                return {
+                    error: true,
+                    msg: r.Fault.Type
+                };
+            }
+            return args;
+        });
     }
 
     // Check for updates to an event
@@ -197,7 +422,7 @@ export class EventsService {
         });
     }
 
-    // Download new content (login #3)
+    // Download new content (login #3 / load #11)
     downloadContent(context) {
         let req = {
             EventGuid: context.EventGuid ? context.EventGuid : context.configurationKey.configuration.eventGuid,

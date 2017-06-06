@@ -62,9 +62,15 @@ export class HomePage {
       loader.present();
       this.eventsService.loadEventFromKey(d[0].Data).subscribe((data) => {
         loader.dismiss();
+        if (data.error) {
+          this.eventsService.showToast(data.msg, true);
+        } else {
+          this.eventsService.showToast('Event download complete!', false);
+        }
       }, (err) => {
         loader.dismiss();
-        this.eventsService.showToast("There was an issue downloading this event...", true);
+        const msg = err.msg ? err.msg : "There was an issue downloading this event...";
+        this.eventsService.showToast(msg, true);
       })
     } else {
       this.eventsService.showToast('Please check your internet connection...', true);
