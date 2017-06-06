@@ -22,58 +22,70 @@ export class EventsService {
     loadEventFromKey(key) {
         return this.parseConfigurationKey(key).flatMap((r1) => {
             if (r1['error']) {
-                return Observable.throw(r1);
+                this.showToast(r1['msg'], true);
+                Observable.throw(r1);
             }
             return this.loadExistingEvent(r1);
         }).flatMap((r2) => {
-            if (r2['error']) {
-                return Observable.throw(r2);
+            if (r2['error']) {  
+                this.showToast(r2['msg'], true);          
+                Observable.throw(r2);
             }
             return this.getDiscoveryRestUrl(r2);
         }).flatMap((r3) => {
             if (r3['error']) {
-                return Observable.throw(r3);
+                this.showToast(r3['msg'], true);
+                Observable.throw(r3);
             }
             return this.getLoginRestUrl(r3);
         }).flatMap((r4) => {
             if (r4['error']) {
-                return Observable.throw(r4);
+                this.showToast(r4['msg'], true);
+                Observable.throw(r4);
             }
             return this.getSessionRestUrl(r4);
         }).flatMap((r5) => {
             if (r5['error']) {
-                return Observable.throw(r5);
+                this.showToast(r5['msg'], true);
+                Observable.throw(r5);
             }
             return this.getAccessControlRestUrl(r5);
         }).flatMap((r6) => {
             if (r6['error']) {
-                return Observable.throw(r6);
+                this.showToast(r6['msg'], true);
+                Observable.throw(r6);
             }
             return this.login(r6);
         }).flatMap((r7) => {
             if (r7['error']) {
-                return Observable.throw(r7);
+                this.showToast(r7['msg'], true);
+                Observable.throw(r7);
             }
             return this.getEventInfo(r7);
         }).flatMap((r8) => {
             if (r8['error']) {
-                return Observable.throw(r8);
+                this.showToast(r8['msg'], true);
+                Observable.throw(r8);
             }
             return this.createOrUpdateEvent(r8);
         }).flatMap((r9) => {
             if (r9['error']) {
-                return Observable.throw(r9);
+                this.showToast(r9['msg'], true);
+                Observable.throw(r9);
             }
             return this.saveSessionToken(r9);
         }).flatMap((r10) => {
             if (r10['error']) {
-                return Observable.throw(r10);
+                this.showToast(r10['msg'], true);
+                Observable.throw(r10);
             }
+            this.showToast('Downloading content...', false);
             return this.downloadContent(r10);
         }).flatMap((r11) => {
             if (r11['error']) {
-                return Observable.throw(r11);
-            }
+                this.showToast(r11['msg'], true);
+                Observable.throw(r11);
+            }            
             return this.loadSessionList(r11);
         });
     }
@@ -292,7 +304,7 @@ export class EventsService {
 
         return this.fetchSessionList(args).flatMap((d) => {
             if (d.error) {
-                return Observable.throw(d);
+                Observable.throw(d);
             } else {
                 return this.saveSessionlist(d);
             }

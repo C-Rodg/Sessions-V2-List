@@ -17,6 +17,10 @@ page-home {
         }
     }
 
+    .active-event {       
+        background-color: #ebebeb !important;
+    }
+
     .event-card {
         border-left: 3px solid color($colors, p-primary);
         .card-content {

@@ -15,7 +15,7 @@
   <div class="events-container" [hidden]="showCamera">
 
     <div *ngFor="let event of events">
-      <ion-card class="event-card">
+      <ion-card class="event-card" [ngClass]="{'active-event' : event.EventGuid === activeEvent}">
         <ion-card-content>
           <div class="title">{{event.Name}}</div>
           <div class="date">{{event.DisplayDate}}</div>        
